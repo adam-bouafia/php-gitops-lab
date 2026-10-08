@@ -73,15 +73,20 @@ build:php-fpm:
   stage: push
   image: quay.io/buildah/stable
   <<: *app_changes
+  variables:
+    STORAGE_DRIVER: vfs
 
+# buildah shares the containers/image transport library with skopeo, so it
+# can push straight from an oci-archive - no separate skopeo install needed
+# (quay.io/buildah/stable doesn't bundle it).
 push:nginx:
   <<: *push_script
   needs: ["build:nginx"]
   script:
-    - skopeo copy --dest-creds "$CI_REGISTRY_USER:$CI_REGISTRY_PASSWORD" oci-archive:nginx-image.tar "docker://$CI_REGISTRY_IMAGE/nginx:$IMAGE_TAG"
+    - buildah push --storage-driver=$STORAGE_DRIVER --creds "$CI_REGISTRY_USER:$CI_REGISTRY_PASSWORD" oci-archive:nginx-image.tar "docker://$CI_REGISTRY_IMAGE/nginx:$IMAGE_TAG"
 
 push:php-fpm:
   <<: *push_script
   needs: ["build:php-fpm"]
   script:
-    - skopeo copy --dest-creds "$CI_REGISTRY_USER:$CI_REGISTRY_PASSWORD" oci-archive:php-fpm-image.tar "docker://$CI_REGISTRY_IMAGE/php-fpm:$IMAGE_TAG"
+    - buildah push --storage-driver=$STORAGE_DRIVER --creds "$CI_REGISTRY_USER:$CI_REGISTRY_PASSWORD" oci-archive:php-fpm-image.tar "docker://$CI_REGISTRY_IMAGE/php-fpm:$IMAGE_TAG"
