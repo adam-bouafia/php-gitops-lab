@@ -1,0 +1,87 @@
+# GitLab CI builds and pushes images; it never touches the cluster.
+# Flux (running inside the cluster) pulls both the registry and this repo -
+# see README.md for the full pull-based flow.
+
+stages:
+  - lint
+  - test
+  - build
+  - push
+
+variables:
+  # Sortable tag: pipeline IID increases monotonically, so ImagePolicy can
+  # pick "latest" numerically. A bare commit SHA or `latest` would not sort.
+  IMAGE_TAG: "main-${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_IID}"
+
+# Manifest-only commits (chart/, clusters/, infrastructure/, apps/,
+# image-automation/) must not rebuild images - that includes the
+# ImageUpdateAutomation bot's own commits back into this repo, which would
+# otherwise retrigger a build and loop forever.
+.app_changes: &app_changes
+  rules:
+    - changes:
+        - app/**/*
+
+lint:php:
+  stage: lint
+  image: php:8.3-cli-alpine
+  <<: *app_changes
+  script:
+    - find app/src -name '*.php' -print0 | xargs -0 -n1 php -l
+
+test:smoke:
+  stage: test
+  image: php:8.3-cli-alpine
+  <<: *app_changes
+  script:
+    - php -S 127.0.0.1:8000 -t app/src &
+    - sleep 1
+    - curl -sf http://127.0.0.1:8000/healthz.php | grep -q '"status":"ok"'
+
+# Daemonless builds: upstream kaniko was archived in 2025, so this uses
+# buildah instead (actively maintained; BuildKit rootless or a maintained
+# kaniko fork are the other options). build and push are separate stages so
+# a scan/test could gate the push later without rebuilding the image.
+.build_script: &build_script
+  stage: build
+  image: quay.io/buildah/stable
+  <<: *app_changes
+  variables:
+    STORAGE_DRIVER: vfs
+  artifacts:
+    expire_in: 1 hour
+
+build:nginx:
+  <<: *build_script
+  script:
+    - buildah bud --storage-driver=$STORAGE_DRIVER -f app/nginx/Dockerfile -t nginx-image app/
+    - buildah push --storage-driver=$STORAGE_DRIVER nginx-image oci-archive:nginx-image.tar
+  artifacts:
+    paths: [nginx-image.tar]
+    expire_in: 1 hour
+
+build:php-fpm:
+  <<: *build_script
+  script:
+    - buildah bud --storage-driver=$STORAGE_DRIVER -f app/php-fpm/Dockerfile -t php-fpm-image app/
+    - buildah push --storage-driver=$STORAGE_DRIVER php-fpm-image oci-archive:php-fpm-image.tar
+  artifacts:
+    paths: [php-fpm-image.tar]
+    expire_in: 1 hour
+
+.push_script: &push_script
+  stage: push
+  image: quay.io/buildah/stable
+  <<: *app_changes
+
+push:nginx:
+  <<: *push_script
+  needs: ["build:nginx"]
+  script:
+    - skopeo copy --dest-creds "$CI_REGISTRY_USER:$CI_REGISTRY_PASSWORD" oci-archive:nginx-image.tar "docker://$CI_REGISTRY_IMAGE/nginx:$IMAGE_TAG"
+
+push:php-fpm:
+  <<: *push_script
+  needs: ["build:php-fpm"]
+  script:
+    - skopeo copy --dest-creds "$CI_REGISTRY_USER:$CI_REGISTRY_PASSWORD" oci-archive:php-fpm-image.tar "docker://$CI_REGISTRY_IMAGE/php-fpm:$IMAGE_TAG"
