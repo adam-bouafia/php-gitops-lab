@@ -1,7 +1,8 @@
-# Trimmed for a single i5/16GB box running kind + Docker + this stack at
-# once: short retention, modest requests/limits, Alertmanager disabled
-# (no receiver configured yet), node-exporter disabled (redundant DaemonSet
-# noise on a single-node kind cluster), Grafana disabled (the lab debugs
+# Trimmed for a single i5/16GB box (node `utopia`) that also runs the
+# kubeadm control plane, VS Code, and a browser with no swap: short
+# retention, modest requests/limits, Alertmanager disabled (no receiver
+# configured yet), node-exporter disabled (one less DaemonSet pod; host
+# metrics aren't the point of this lab), Grafana disabled (the lab debugs
 # through the Prometheus UI directly - see README.md). Re-enable any of
 # these for a one-off demo.
 apiVersion: helm.toolkit.fluxcd.io/v2

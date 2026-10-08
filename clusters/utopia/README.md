@@ -1,4 +1,9 @@
-# clusters/kind
+# clusters/utopia
+
+The target is the existing single-node kubeadm cluster on this machine
+(node name `utopia`, context `kubernetes-admin@kubernetes`) - not a
+throwaway `kind` cluster. It already runs Calico (via tigera-operator) and
+has no taint on the control-plane node, so workloads schedule on it.
 
 `infrastructure.yaml`, `apps.yaml`, and `image-automation.yaml` are Flux
 Kustomization custom resources (`kustomize.toolkit.fluxcd.io`) - entry points
@@ -14,7 +19,7 @@ flux bootstrap github \
   --owner=adam-bouafia \
   --repository=php-gitops-lab \
   --branch=main \
-  --path=clusters/kind \
+  --path=clusters/utopia \
   --personal \
   --read-write-key
 ```
