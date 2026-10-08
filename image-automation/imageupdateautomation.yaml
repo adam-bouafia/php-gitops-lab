@@ -1,0 +1,34 @@
+# Writes the resolved tags back into Git (apps/php-app/helmrelease.yaml)
+# so the cluster's state stays reproducible from Git, with an audit trail
+# per deploy. [ci skip] stops this commit from retriggering the GitLab
+# pipeline - belt-and-suspenders with the `rules: changes:` scoping in
+# .gitlab-ci.yml that only builds on app/ changes anyway.
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageUpdateAutomation
+metadata:
+  name: php-app
+  namespace: flux-system
+spec:
+  interval: 5m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        name: fluxcdbot
+        email: fluxcdbot@users.noreply.github.com
+      messageTemplate: |
+        chore: automated image update [ci skip]
+
+        {{ range .Updated.Images -}}
+        {{ println . }}
+        {{ end -}}
+    push:
+      branch: main
+  update:
+    path: ./apps/php-app
+    strategy: Setters

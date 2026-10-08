@@ -1,0 +1,13 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: php-app-nginx
+  namespace: flux-system
+spec:
+  image: registry.gitlab.com/adam-bouafia/php-gitops-lab/nginx
+  interval: 5m
+  # Flux's image-reflector controller needs its OWN credential to list
+  # tags - separate from the kubelet's imagePullSecret in apps/php-app/.
+  # See image-automation/README.md.
+  secretRef:
+    name: gitlab-registry-flux
