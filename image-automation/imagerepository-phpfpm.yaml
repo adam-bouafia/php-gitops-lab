@@ -4,7 +4,7 @@ metadata:
   name: php-app-phpfpm
   namespace: flux-system
 spec:
-  image: registry.gitlab.com/adam-bouafia/php-gitops-lab/php-fpm
+  image: registry.gitlab.com/adam.bouafia/php-gitops-lab/php-fpm
   interval: 5m
   secretRef:
     name: gitlab-registry-flux

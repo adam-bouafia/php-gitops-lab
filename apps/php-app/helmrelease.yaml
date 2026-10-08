@@ -39,8 +39,8 @@ spec:
 
     image:
       nginx:
-        repository: registry.gitlab.com/adam-bouafia/php-gitops-lab/nginx
+        repository: registry.gitlab.com/adam.bouafia/php-gitops-lab/nginx
         tag: "main-0000000-0" # {"$imagepolicy": "flux-system:php-app-nginx:tag"}
       phpfpm:
-        repository: registry.gitlab.com/adam-bouafia/php-gitops-lab/php-fpm
+        repository: registry.gitlab.com/adam.bouafia/php-gitops-lab/php-fpm
         tag: "main-0000000-0" # {"$imagepolicy": "flux-system:php-app-phpfpm:tag"}

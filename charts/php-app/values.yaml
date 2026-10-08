@@ -2,11 +2,11 @@ replicaCount: 2
 
 image:
   nginx:
-    repository: registry.gitlab.com/adam-bouafia/php-gitops-lab/nginx
+    repository: registry.gitlab.com/adam.bouafia/php-gitops-lab/nginx
     tag: "latest"
     pullPolicy: IfNotPresent
   phpfpm:
-    repository: registry.gitlab.com/adam-bouafia/php-gitops-lab/php-fpm
+    repository: registry.gitlab.com/adam.bouafia/php-gitops-lab/php-fpm
     tag: "latest"
     pullPolicy: IfNotPresent
 
