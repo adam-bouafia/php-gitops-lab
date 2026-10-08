@@ -1,0 +1,46 @@
+# The two tag lines below are where ImageUpdateAutomation writes. The
+# `:tag` suffix in the setter marker means only the tag gets rewritten, not
+# the full image:tag string - no marker, no update, and no error either.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: php-app
+  namespace: php-app
+spec:
+  interval: 10m
+  chart:
+    spec:
+      # Chart pulled from a path in this same Git source, not a
+      # HelmRepository - keeps the chart and its consumer in one place.
+      chart: ./charts/php-app
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+  values:
+    replicaCount: 2
+
+    # kubelet's own credential for pulling images - separate from the
+    # ImageRepository.spec.secretRef Flux uses to scan tags (flux-system).
+    # Create with:
+    #   kubectl -n php-app create secret docker-registry gitlab-registry \
+    #     --docker-server=registry.gitlab.com \
+    #     --docker-username=<deploy-token-username> \
+    #     --docker-password=<deploy-token-password>
+    imagePullSecrets:
+      - name: gitlab-registry
+
+    image:
+      nginx:
+        repository: registry.gitlab.com/adam-bouafia/php-gitops-lab/nginx
+        tag: "main-0000000-0" # {"$imagepolicy": "flux-system:php-app-nginx:tag"}
+      phpfpm:
+        repository: registry.gitlab.com/adam-bouafia/php-gitops-lab/php-fpm
+        tag: "main-0000000-0" # {"$imagepolicy": "flux-system:php-app-phpfpm:tag"}
