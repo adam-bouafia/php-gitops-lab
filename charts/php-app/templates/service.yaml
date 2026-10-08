@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "php-app.fullname" . }}
+  labels:
+    {{- include "php-app.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "php-app.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+    - name: nginx-metrics
+      port: {{ .Values.metrics.nginxExporter.port }}
+      targetPort: nginx-metrics
+    - name: phpfpm-metrics
+      port: {{ .Values.metrics.phpfpmExporter.port }}
+      targetPort: phpfpm-metrics

@@ -1,0 +1,48 @@
+{{- if .Values.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "php-app.fullname" . }}
+  labels:
+    {{- include "php-app.labels" . | nindent 4 }}
+    {{- toYaml .Values.prometheusRule.labels | nindent 4 }}
+spec:
+  groups:
+    - name: php-app.rules
+      rules:
+        - alert: PhpAppTargetDown
+          expr: up{job=~".*php-app.*"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "php-app scrape target is down"
+            description: "Prometheus has not been able to scrape a php-app target for 5 minutes."
+
+        - alert: PhpAppTargetAbsent
+          expr: absent(up{job=~".*php-app.*"})
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "php-app has no scrape target at all"
+            description: "No php-app target exists in Prometheus - check the ServiceMonitor's labels and port name against the Service."
+
+        - alert: PhpFpmMaxChildrenReached
+          expr: increase(phpfpm_max_children_reached[5m]) > 0
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "php-fpm hit pm.max_children"
+            description: "php-fpm is rejecting requests because pm.max_children is too low for the current load."
+
+        - alert: PhpAppContainerRestartsHigh
+          expr: increase(kube_pod_container_status_restarts_total{namespace="{{ .Release.Namespace }}"}[15m]) > 2
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "php-app container restarting repeatedly"
+            description: "A container in the {{ "{{ $labels.pod }}" }} pod has restarted more than twice in 15 minutes."
+{{- end }}

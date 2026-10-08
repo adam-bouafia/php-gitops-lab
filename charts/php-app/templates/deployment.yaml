@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "php-app.fullname" . }}
+  labels:
+    {{- include "php-app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "php-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "php-app.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        # nginx serves static files and forwards *.php over FastCGI to
+        # php-fpm on 127.0.0.1:9000 - same pod, shared network namespace.
+        - name: nginx
+          image: "{{ .Values.image.nginx.repository }}:{{ .Values.image.nginx.tag }}"
+          imagePullPolicy: {{ .Values.image.nginx.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+          readinessProbe:
+            httpGet:
+              path: /healthz.php
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz.php
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources.nginx | nindent 12 }}
+
+        - name: php-fpm
+          image: "{{ .Values.image.phpfpm.repository }}:{{ .Values.image.phpfpm.tag }}"
+          imagePullPolicy: {{ .Values.image.phpfpm.pullPolicy }}
+          ports:
+            - name: fpm
+              containerPort: 9000
+          resources:
+            {{- toYaml .Values.resources.phpfpm | nindent 12 }}
+
+        - name: nginx-exporter
+          image: "{{ .Values.metrics.nginxExporter.image }}"
+          args:
+            - --nginx.scrape-uri=http://127.0.0.1:{{ .Values.service.targetPort }}/nginx_status
+          ports:
+            - name: nginx-metrics
+              containerPort: {{ .Values.metrics.nginxExporter.port }}
+          resources:
+            {{- toYaml .Values.resources.nginxExporter | nindent 12 }}
+
+        - name: phpfpm-exporter
+          image: "{{ .Values.metrics.phpfpmExporter.image }}"
+          env:
+            - name: PHP_FPM_SCRAPE_URI
+              value: "tcp://127.0.0.1:9000/fpm-status"
+          ports:
+            - name: phpfpm-metrics
+              containerPort: {{ .Values.metrics.phpfpmExporter.port }}
+          resources:
+            {{- toYaml .Values.resources.phpfpmExporter | nindent 12 }}

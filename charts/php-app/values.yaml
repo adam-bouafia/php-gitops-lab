@@ -1,0 +1,52 @@
+replicaCount: 2
+
+image:
+  nginx:
+    repository: registry.gitlab.com/adam-bouafia/php-gitops-lab/nginx
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  phpfpm:
+    repository: registry.gitlab.com/adam-bouafia/php-gitops-lab/php-fpm
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+resources:
+  nginx:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { cpu: 100m, memory: 64Mi }
+  phpfpm:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { cpu: 200m, memory: 128Mi }
+  nginxExporter:
+    requests: { cpu: 5m, memory: 16Mi }
+    limits: { cpu: 50m, memory: 32Mi }
+  phpfpmExporter:
+    requests: { cpu: 5m, memory: 16Mi }
+    limits: { cpu: 50m, memory: 32Mi }
+
+service:
+  port: 80
+  targetPort: 8080
+
+metrics:
+  nginxExporter:
+    image: nginx/nginx-prometheus-exporter:1.3.0
+    port: 9113
+  phpfpmExporter:
+    image: hipages/php-fpm_exporter:2.2.0
+    port: 9253
+
+# kube-prometheus-stack's default Prometheus only picks up ServiceMonitors
+# and PrometheusRules carrying `release: <stack release name>`.
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  labels:
+    release: kube-prometheus-stack
+
+prometheusRule:
+  enabled: true
+  labels:
+    release: kube-prometheus-stack
