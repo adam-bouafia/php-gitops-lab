@@ -1,0 +1,55 @@
+# Trimmed for a single i5/16GB box running kind + Docker + this stack at
+# once: short retention, modest requests/limits, Alertmanager disabled
+# (no receiver configured yet), node-exporter disabled (redundant DaemonSet
+# noise on a single-node kind cluster), Grafana disabled (the lab debugs
+# through the Prometheus UI directly - see README.md). Re-enable any of
+# these for a one-off demo.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: monitoring
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      version: ">=61.0.0 <62.0.0"
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+  values:
+    alertmanager:
+      enabled: false
+
+    grafana:
+      enabled: false
+
+    nodeExporter:
+      enabled: false
+
+    prometheusOperator:
+      resources:
+        requests: { cpu: 50m, memory: 128Mi }
+        limits: { cpu: 200m, memory: 256Mi }
+
+    prometheus:
+      prometheusSpec:
+        retention: 6h
+        scrapeInterval: 30s
+        resources:
+          requests: { cpu: 100m, memory: 256Mi }
+          limits: { cpu: 500m, memory: 512Mi }
+        # Default behaviour (true): only ServiceMonitors/PrometheusRules
+        # carrying `release: kube-prometheus-stack` are picked up. Kept
+        # explicit here because it's the mechanism drill 13 exercises.
+        serviceMonitorSelectorNilUsesHelmValues: true
+        ruleSelectorNilUsesHelmValues: true
