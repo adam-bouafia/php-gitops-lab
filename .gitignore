@@ -20,3 +20,6 @@ charts/*/Chart.lock
 # OS / editor
 .DS_Store
 *.swp
+
+# Local Claude Code session state
+.claude/

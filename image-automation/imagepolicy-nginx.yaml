@@ -1,6 +1,6 @@
 # CI tags as main-<short-sha>-<pipeline-iid>; `latest` or a bare SHA would
 # not sort, so the numeric pipeline IID is extracted and compared.
-apiVersion: image.toolkit.fluxcd.io/v1beta2
+apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImagePolicy
 metadata:
   name: php-app-nginx

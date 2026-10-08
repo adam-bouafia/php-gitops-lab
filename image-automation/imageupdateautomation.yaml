@@ -3,7 +3,7 @@
 # per deploy. [ci skip] stops this commit from retriggering the GitLab
 # pipeline - belt-and-suspenders with the `rules: changes:` scoping in
 # .gitlab-ci.yml that only builds on app/ changes anyway.
-apiVersion: image.toolkit.fluxcd.io/v1beta2
+apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImageUpdateAutomation
 metadata:
   name: php-app
