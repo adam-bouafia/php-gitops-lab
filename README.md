@@ -6,21 +6,58 @@ the Git state, and kube-prometheus-stack watches the result. Built to learn
 every failure mode of each piece well enough to debug it live - see
 [`drills/`](drills/) for the break-and-fix catalog.
 
-## Status (2026-10-08)
+## Status (2026-10-09)
 
-Freshly scaffolded: the Helm chart, CI pipeline, and Flux manifests below
-are written and lint-clean, but nothing has been bootstrapped against a
-live cluster yet, and no drill has been run. The `drills/` catalog is a
-to-do list, not a results log. This is a single-node lab, not a production
-claim.
+Live and verified end to end against a real single-node kubeadm cluster:
+Flux is bootstrapped, kube-prometheus-stack is running, and a real
+GitLab CI pipeline has built and pushed both images. The full loop has
+been observed to close with no manual intervention - CI build, registry
+scan, tag resolution, Git commit, Helm upgrade, and a running pod serving
+real HTTP responses - see "What's been proven live" below. No drill has
+been run yet; the `drills/` catalog is still a to-do list. This is a
+single-node lab, not a production claim.
+
+### What's been proven live
+
+Full trace, one real run, no step skipped or faked:
+
+1. `git push` to GitHub with an app change
+2. GitLab CI (`lint` -> `test` -> `build` -> `push`) built both images and
+   pushed them to the GitLab Container Registry with a sortable tag
+3. Flux's `ImageRepository` scanned the registry and found the new tag
+4. `ImagePolicy` resolved it as latest
+5. `ImageUpdateAutomation` committed the resolved tag into
+   `apps/php-app/helmrelease.yaml` on GitHub automatically, authored by
+   Flux's own bot identity, `[ci skip]` in the message
+6. The `apps` Kustomization picked up that commit
+7. `helm-controller` ran the upgrade - `HelmRelease` went `Ready: True`
+8. The Deployment rolled out 2/2 pods, `Running`, images pulled clean
+9. A pod inside the cluster `curl`ed the Service and got the real page back
+
+### Known operational issue
+
+CoreDNS on this host has broken three separate times during this build,
+always the same mechanism: `/etc/resolv.conf` inside each CoreDNS pod is
+set once at pod creation from the node's resolver file at that moment, and
+never updates again. When the host's network changes (different Wi-Fi, VPN
+on/off), CoreDNS keeps forwarding to resolvers that are no longer correct
+for the current network, and DNS inside the cluster dies - including for
+Flux and image-automation, since both depend on resolving GitHub and
+GitLab. Fix each time was `kubectl -n kube-system rollout restart
+deployment coredns`, which forces new pods to pick up the current
+`/run/systemd/resolve/resolv.conf`. This is a host/cluster issue, not a
+bug in anything this repo defines - worth a small watchdog if it keeps
+recurring.
 
 ## Why GitHub here and GitLab CI in the pipeline
 
-This repository (the Git source Flux reads) is hosted on GitHub. The CI
-pipeline (`.gitlab-ci.yml`) and the container registry are GitLab's,
-matching how the pipeline is designed and documented. To actually run the
-pipeline, this repo needs to be mirrored into (or hosted directly on) a
-GitLab project - GitLab CI only executes for repositories it can see.
+This repository (the Git source Flux reads, and where `ImageUpdateAutomation`
+commits back) is hosted on GitHub. The CI pipeline (`.gitlab-ci.yml`) and the
+container registry are GitLab's, pushed to a separate GitLab project
+(`gitlab.com/adam.bouafia/php-gitops-lab`) that mirrors this one so the
+pipeline has something to actually run against - GitLab CI only executes for
+repositories it can see. Flux never talks to GitLab directly except to pull
+images from its registry.
 
 ## Architecture
 
