@@ -24,8 +24,8 @@ spec:
       messageTemplate: |
         chore: automated image update [ci skip]
 
-        {{ range .Updated.Images -}}
-        {{ println . }}
+        {{ range .Changed.Changes -}}
+        {{ print .OldValue }} -> {{ println .NewValue }}
         {{ end -}}
     push:
       branch: main
